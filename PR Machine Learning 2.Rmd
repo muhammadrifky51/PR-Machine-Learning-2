@@ -1,0 +1,85 @@
+---
+title: "PR Machine Learning 2 (Classification)"
+author: "Muhammad Rifky Yusdiansyah"
+date: September 10th, 2019
+output: html_notebook
+---
+
+```{r}
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+Import dataset dan menampilkan 5 dataset pertama
+```{r}
+data<-read.csv("https://raw.githubusercontent.com/arikunco/machinelearning/master/dataset/HR_comma_sep.csv")
+head(data,5)
+```
+Pada data tersebut, akan didefinisikan orang yang akan keluar adalah 1 dan tidak keluar adalah 0
+Selanjutnya, mengubah data-data yang numerik menjadi faktor
+```{r}
+data$Work_accident<-as.factor(data$Work_accident)
+data$promotion_last_5years<-as.factor(data$promotion_last_5years)
+data$sales<-as.factor(data$sales)
+data$salary<-as.factor(data$salary)
+```
+
+Berkenalan dengan datanya terlebih dahulu (kecuali pada kolom "left", yang pada kasus ini menjadi label)
+```{r}
+summary(data[c("satisfaction_level", "last_evaluation", "number_project", "average_montly_hours", "time_spend_company", "Work_accident", "promotion_last_5years", "sales", "salary")])
+```
+
+Membagi data menjadi data train dan data test
+```{r}
+data$left <- as.factor(data$left)
+idxs <- sample(1:nrow(data),as.integer(0.7*nrow(data)))
+trainData <- data[idxs,]
+testData <- data[-idxs,]
+```
+
+Memprediksi menggunakan decision tree dan menampilkan confussion matrix
+```{r}
+tree <- rpart(left ~ ., data = data.frame(trainData), method = "class")
+predict(tree, data.frame(testData),type="class" )
+table(testData[,'left'],predict(tree, data.frame(testData),type="class"))
+```
+
+Dikarenakan pada kasus ini akan memprediksi seseorang akan keluar atau tidak, maka metric yang akan digunakan adalah akurasi dan recall 1 (keluar) recall digunakan karena perusahaan akan men-"treat" pekerja yang akan keluar agar sesuai dengan keinginan perusahaan dan ingin meminimalisir kesalahan memprediksi tidak keluar padahal keluar.
+```{r}
+tab<-table(testData[,'left'],predict(tree, data.frame(testData),type="class"))
+XX<-tab[1,1]
+XY<-tab[2,1]
+YX<-tab[1,2]
+YY<-tab[2,2]
+aktree<-(XX+YY)/(XX+XY+YX+YY)
+rec1tree<-YY/(YY+XY)
+cat(paste(c("Akurasi:", as.character(aktree),"\nRecall Keluar:",as.character(rec1tree))))
+```
+
+Berikut gambar dari decision treenya
+```{r}
+rpart.plot(tree, box.palette="RdBu", shadow.col="gray", nn=TRUE,roundint=FALSE)
+```
+
+Selanjutnya menggunakan Random Forest
+```{r}
+randomFor <- randomForest(left ~ ., data = data.frame(trainData), ntree=1000, importance = TRUE)
+predict(randomFor, data.frame(testData),type="class")
+table(testData[,'left'],predict(tree, data.frame(testData), type="class"))
+```
+
+Menghitung akurasi dan recall
+```{r}
+tab<-table(testData[,'left'],predict(tree, data.frame(testData),type="class"))
+XX<-tab[1,1]
+XY<-tab[2,1]
+YX<-tab[1,2]
+YY<-tab[2,2]
+aktree<-(XX+YY)/(XX+XY+YX+YY)
+rec1tree<-YY/(YY+XY)
+cat(paste(c("Akurasi:", as.character(aktree),"\nRecall Keluar:",as.character(rec1tree))))
+```
+
+
+Karena hasil yang didapatkan sama, maka model yang digunakan lebih baik adalah decision tree
